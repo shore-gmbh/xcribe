@@ -43,7 +43,7 @@ defmodule Xcribe.ConnParser do
       query_params: conn.query_params,
       request_body: conn.body_params,
       resource: resource,
-      resp_body: conn.resp_body,
+      resp_body: decode_body(conn.resp_body),
       resp_headers: conn.resp_headers,
       status_code: conn.status,
       verb: String.downcase(conn.method),
@@ -51,11 +51,14 @@ defmodule Xcribe.ConnParser do
     }
   end
 
+  defp decode_body(""), do: ""
+  defp decode_body(body), do: Jason.decode!(body)
+
   defp build_opts(opts), do: Keyword.put_new(opts, :description, "")
 
   defp identify_route(%{method: method, host: host, path_info: path} = conn) do
     module = router_module(conn)
-    route = module.__match_route__(decode_uri(path), method, host)
+    route = Phoenix.Router.route_info(module, method, decode_uri(path), host)
 
     extract_route_info(route)
   rescue
@@ -66,10 +69,9 @@ defmodule Xcribe.ConnParser do
 
   defp decode_uri(path_info), do: Enum.map(path_info, &URI.decode/1)
 
-  defp extract_route_info({%{} = route_info, _callback_one, _callback_two, _plug_info}),
-    do: route_info
+  defp extract_route_info(%{} = route_info), do: route_info
 
-  defp extract_route_info(_),
+  defp extract_route_info(:error),
     do: Map.put(@error_struct, :message, "A route wasn't found for given Conn")
 
   defp router_options(%{plug_opts: opts}), do: opts
