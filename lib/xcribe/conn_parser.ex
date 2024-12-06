@@ -43,7 +43,7 @@ defmodule Xcribe.ConnParser do
       query_params: conn.query_params,
       request_body: conn.body_params,
       resource: resource,
-      resp_body: decode_body!(conn.resp_body),
+      resp_body: decode_body(conn.resp_body),
       resp_headers: conn.resp_headers,
       status_code: conn.status,
       verb: String.downcase(conn.method),
@@ -76,8 +76,12 @@ defmodule Xcribe.ConnParser do
 
   defp controller_module(%{plug: controller}), do: controller
 
-  defp decode_body!(""), do: ""
-  defp decode_body!(body), do: Jason.decode!(body)
+  defp decode_body(body) do
+    case Jason.decode(body) do
+      {:ok, decoded_body} -> decoded_body
+      {:error, _} -> body
+    end
+  end
 
   defp resource_name(%{route: route}, action) do
     route
